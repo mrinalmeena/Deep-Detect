@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeepDetect — Audio Deepfake Detection</title>
+    <meta name="description" content="AI-powered audio deepfake detection. Upload or record audio to detect AI-generated voices." />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        brand: { 50:'#f0fdfa', 100:'#ccfbf1', 200:'#99f6e4', 300:'#5eead4', 400:'#2dd4bf', 500:'#14b8a6', 600:'#0d9488', 700:'#0f766e', 800:'#115e59', 900:'#134e4a' },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { background: #0a0f1a; }
+        .fade-in { animation: fadeIn 0.35s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-rec { animation: pulseRec 1.4s ease-out infinite; }
+        @keyframes pulseRec { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); } 70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+        .spin { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-[#0a0f1a] text-slate-200 min-h-screen font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useCallback } = React;
+        const API = "http://localhost:8000";
+
+        /* ── WAV encoder (records mic as WAV so librosa can read it) ──── */
+        function encodeWAV(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+            function writeStr(offset, str) { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
+            writeStr(0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeStr(8, 'WAVE');
+            writeStr(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeStr(36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+            for (let i = 0; i < samples.length; i++) {
+                const s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        /* ── Mic recorder hook (outputs WAV) ────────────────────────── */
+        function useMicRecorder() {
+            const [recording, setRecording] = useState(false);
+            const [audioBlob, setAudioBlob] = useState(null);
+            const [audioUrl, setAudioUrl] = useState(null);
+            const ctxRef = useRef(null);
+            const streamRef = useRef(null);
+            const chunksRef = useRef([]);
+            const procRef = useRef(null);
+
+            const start = useCallback(async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } });
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                    const source = ctx.createMediaStreamSource(stream);
+                    const proc = ctx.createScriptProcessor(4096, 1, 1);
+                    chunksRef.current = [];
+                    proc.onaudioprocess = (e) => {
+                        const data = e.inputBuffer.getChannelData(0);
+                        chunksRef.current.push(new Float32Array(data));
+                    };
+                    source.connect(proc);
+                    proc.connect(ctx.destination);
+                    ctxRef.current = ctx;
+                    streamRef.current = stream;
+                    procRef.current = proc;
+                    setRecording(true);
+                    setAudioBlob(null);
+                    setAudioUrl(null);
+                } catch (err) {
+                    alert("Mic access denied. Please allow microphone access.");
+                }
+            }, []);
+
+            const stop = useCallback(() => {
+                if (procRef.current) procRef.current.disconnect();
+                if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+                const sr = ctxRef.current ? ctxRef.current.sampleRate : 16000;
+                if (ctxRef.current) ctxRef.current.close();
+
+                let totalLen = 0;
+                chunksRef.current.forEach(c => totalLen += c.length);
+                const merged = new Float32Array(totalLen);
+                let offset = 0;
+                chunksRef.current.forEach(c => { merged.set(c, offset); offset += c.length; });
+
+                const blob = encodeWAV(merged, sr);
+                setAudioBlob(blob);
+                setAudioUrl(URL.createObjectURL(blob));
+                setRecording(false);
+            }, []);
+
+            return { recording, audioBlob, audioUrl, start, stop };
+        }
+
+        /* ── Indicator Bar ──────────────────────────────────────────── */
+        function IndicatorBar({ pct, tag }) {
+            const color = tag === "suspect" ? "bg-red-400" : tag === "normal" ? "bg-teal-400" : "bg-amber-400";
+            return (
+                <div className="flex items-center gap-2.5">
+                    <div className="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden min-w-[120px]">
+                        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-300 w-12 text-right">{pct}%</span>
+                </div>
+            );
+        }
+
+        /* ── Evidence Table ─────────────────────────────────────────── */
+        function EvidenceTable({ evidence }) {
+            return (
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b border-slate-700/60">
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Metric</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Value</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Assessment</th>
+                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest min-w-[200px]">Indicator</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {evidence.map((row, i) => (
+                                <tr key={i} className="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors">
+                                    <td className="py-3.5 px-5 text-sm font-semibold text-slate-200">{row.metric}</td>
+                                    <td className="py-3.5 px-5 text-sm text-slate-400 font-mono">{row.value}</td>
+                                    <td className="py-3.5 px-5">
+                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${
+                                            row.tag === "suspect" ? "bg-red-900/40 text-red-400" :
+                                            row.tag === "normal" ? "bg-teal-900/40 text-teal-400" :
+                                            "bg-amber-900/40 text-amber-400"
+                                        }`}>{row.assessment}</span>
+                                    </td>
+                                    <td className="py-3.5 px-5"><IndicatorBar pct={row.pct} tag={row.tag} /></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        /* ── Prob Bar ───────────────────────────────────────────────── */
+        function ProbBar({ label, value, color }) {
+            return (
+                <div className="flex items-center gap-3">
+                    <span className="w-10 text-sm text-slate-400 font-medium">{label}</span>
+                    <div className="flex-1 h-3.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${value * 100}%` }} />
+                    </div>
+                    <span className="w-16 text-right text-sm font-bold text-slate-200">{(value * 100).toFixed(1)}%</span>
+                </div>
+            );
+        }
+
+        /* ── Result Card ────────────────────────────────────────────── */
+        function ResultCard({ data }) {
+            const fake = data.is_fake;
+            const riskColors = {
+                CRITICAL: "bg-red-900/30 text-red-400 border-red-800/60",
+                HIGH: "bg-orange-900/30 text-orange-400 border-orange-800/60",
+                MEDIUM: "bg-amber-900/30 text-amber-400 border-amber-800/60",
+                LOW: "bg-teal-900/30 text-teal-400 border-teal-800/60",
+            };
+            const suspects = data.evidence.filter(e => e.tag === "suspect").map(e => e.metric);
+            const normals = data.evidence.filter(e => e.tag === "normal").map(e => e.metric);
+
+            return (
+                <div className="fade-in space-y-8 mt-6">
+                    {/* Stats */}
+                    <div className="flex gap-3 flex-wrap">
+                        <span className="bg-slate-800/70 border border-slate-700/50 rounded-lg px-4 py-2.5 text-sm text-slate-300"><strong className="text-slate-100">{data.duration}s</strong> duration</span>
+                        <span className="bg-slate-800/70 border border-slate-700/50 rounded-lg px-4 py-2.5 text-sm text-slate-300"><strong className="text-slate-100">16 kHz</strong> sample rate</span>
+                        <span className="bg-slate-800/70 border border-slate-700/50 rounded-lg px-4 py-2.5 text-sm text-slate-300"><strong className="text-slate-100">mono</strong> channel</span>
+                    </div>
+
+                    {/* Graphs */}
+                    <div>
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Signal Analysis</h3>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4">
+                                <p className="text-sm font-semibold text-slate-300 mb-3">Waveform — Amplitude</p>
+                                <img src={`data:image/png;base64,${data.waveform_img}`} alt="Waveform" className="w-full rounded-xl" />
+                            </div>
+                            <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4">
+                                <p className="text-sm font-semibold text-slate-300 mb-3">Mel Spectrogram — Frequency</p>
+                                <img src={`data:image/png;base64,${data.spectrogram_img}`} alt="Spectrogram" className="w-full rounded-xl" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Verdict */}
+                    <div className={`rounded-2xl p-8 border ${fake ? "bg-red-950/15 border-red-900/30" : "bg-teal-950/15 border-teal-900/30"}`}>
+                        <div className="flex items-center justify-between flex-wrap gap-6">
+                            <div className="flex items-center gap-4">
+                                <span className="text-4xl">{fake ? "🚨" : "✓"}</span>
+                                <div>
+                                    <h2 className={`text-2xl font-bold ${fake ? "text-red-400" : "text-teal-400"}`}>
+                                        {fake ? "AI-Generated Voice Detected" : "Genuine Human Voice"}
+                                    </h2>
+                                    <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border mt-2 inline-block ${riskColors[data.risk]}`}>
+                                        {data.risk} Risk
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className={`text-6xl font-extrabold tracking-tight ${fake ? "text-red-400" : "text-teal-400"}`}>
+                                    {(data.confidence * 100).toFixed(1)}%
+                                </span>
+                                <p className="text-sm text-slate-500 mt-1">{fake ? "Fake" : "Real"} probability</p>
+                            </div>
+                        </div>
+                        <div className="mt-6 space-y-2.5">
+                            <ProbBar label="Real" value={data.prob_real} color="bg-teal-400" />
+                            <ProbBar label="Fake" value={data.prob_fake} color="bg-red-400" />
+                        </div>
+                    </div>
+
+                    {/* Evidence */}
+                    <div className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6">
+                        <h3 className="text-base font-bold text-slate-200 mb-1">What Indicates Deepfake?</h3>
+                        <p className="text-sm text-slate-500 mb-5">Audio metrics analyzed for synthetic speech artifacts</p>
+                        <EvidenceTable evidence={data.evidence} />
+                        {fake && suspects.length > 0 && (
+                            <p className="text-sm text-slate-400 mt-5 leading-relaxed">
+                                <strong className="text-red-400">Key signals: </strong>
+                                {suspects.join(", ")} — patterns typical of AI-synthesized audio.
+                            </p>
+                        )}
+                        {!fake && normals.length > 0 && (
+                            <p className="text-sm text-slate-400 mt-5 leading-relaxed">
+                                <strong className="text-teal-400">Natural signals: </strong>
+                                {normals.join(", ")} — patterns consistent with human speech.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        /* ── App ────────────────────────────────────────────────────── */
+        function App() {
+            const [mode, setMode] = useState("upload");
+            const [result, setResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [fileName, setFileName] = useState("");
+            const fileRef = useRef(null);
+            const mic = useMicRecorder();
+
+            async function analyze(file) {
+                setLoading(true);
+                setError(null);
+                setResult(null);
+                try {
+                    const form = new FormData();
+                    form.append("file", file);
+                    const res = await fetch(`${API}/analyze`, { method: "POST", body: form });
+                    if (!res.ok) throw new Error("Analysis failed");
+                    setResult(await res.json());
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            function handleFile(e) {
+                const f = e.target.files[0];
+                if (f) { setFileName(f.name); analyze(f); }
+            }
+
+            useEffect(() => {
+                if (mic.audioBlob && !mic.recording) {
+                    analyze(new File([mic.audioBlob], "recording.wav", { type: "audio/wav" }));
+                }
+            }, [mic.audioBlob, mic.recording]);
+
+            return (
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+                    {/* ── Header (centered, prominent) ── */}
+                    <div className="text-center mb-10">
+                        <h1 className="text-5xl font-extrabold text-slate-50 tracking-tight">
+                            <span className="mr-2">🔍</span>DeepDetect
+                        </h1>
+                        <p className="text-base text-slate-500 mt-2">Upload audio or record live to detect AI-generated voices</p>
+                    </div>
+
+                    {/* ── Mode Tabs ── */}
+                    <div className="flex justify-center border-b border-slate-800 mb-8">
+                        <button
+                            onClick={() => { setMode("upload"); setResult(null); setError(null); setFileName(""); }}
+                            className={`px-6 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
+                                mode === "upload" ? "border-teal-500 text-slate-100" : "border-transparent text-slate-500 hover:text-slate-300"
+                            }`}
+                        >📁 Upload File</button>
+                        <button
+                            onClick={() => { setMode("record"); setResult(null); setError(null); }}
+                            className={`px-6 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
+                                mode === "record" ? "border-teal-500 text-slate-100" : "border-transparent text-slate-500 hover:text-slate-300"
+                            }`}
+                        >🎙️ Record Live</button>
+                    </div>
+
+                    {/* ── Upload ── */}
+                    {mode === "upload" && (
+                        <div className="fade-in">
+                            <div
+                                onClick={() => fileRef.current.click()}
+                                className="border-2 border-dashed border-slate-700 hover:border-teal-600 rounded-2xl p-12 text-center cursor-pointer transition-all duration-200"
+                            >
+                                <div className="text-5xl mb-4 opacity-60">📂</div>
+                                <p className="text-lg text-slate-300 font-medium">
+                                    {fileName || "Click to upload audio file"}
+                                </p>
+                                <p className="text-sm text-slate-500 mt-2">WAV, MP3, FLAC, OGG, M4A · Best with 2–13s clips</p>
+                                <input ref={fileRef} type="file" accept=".wav,.mp3,.flac,.ogg,.m4a" onChange={handleFile} className="hidden" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Record ── */}
+                    {mode === "record" && (
+                        <div className="fade-in text-center py-10">
+                            {!mic.recording ? (
+                                <button
+                                    onClick={mic.start}
+                                    className="w-24 h-24 rounded-full bg-slate-800/80 border-2 border-slate-600 hover:border-red-500 flex items-center justify-center mx-auto transition-all duration-200 hover:scale-105"
+                                    title="Start recording"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-red-500" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={mic.stop}
+                                    className="w-24 h-24 rounded-full bg-red-900/25 border-2 border-red-500 flex items-center justify-center mx-auto pulse-rec transition-all"
+                                    title="Stop recording"
+                                >
+                                    <div className="w-8 h-8 rounded bg-red-500" />
+                                </button>
+                            )}
+                            <p className="text-sm text-slate-400 mt-5">
+                                {mic.recording
+                                    ? <span className="text-red-400 font-medium">● Recording... click to stop</span>
+                                    : "Click to start recording"
+                                }
+                            </p>
+                            {mic.audioUrl && (
+                                <div className="mt-5">
+                                    <audio controls src={mic.audioUrl} className="mx-auto" />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── Loading ── */}
+                    {loading && (
+                        <div className="flex items-center justify-center gap-3 py-16 fade-in">
+                            <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full spin" />
+                            <span className="text-sm text-slate-400">Analyzing audio...</span>
+                        </div>
+                    )}
+
+                    {/* ── Error ── */}
+                    {error && (
+                        <div className="bg-red-950/25 border border-red-900/40 rounded-xl p-4 mt-6 text-sm text-red-400 fade-in">
+                            ⚠ {error}
+                        </div>
+                    )}
+
+                    {/* ── Results ── */}
+                    {result && !loading && <ResultCard data={result} />}
+
+                    {/* Footer */}
+                    <p className="text-center text-xs text-slate-700 mt-14">DeepDetect v1.0 — Wav2Vec2 Audio Classification</p>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+</html>
