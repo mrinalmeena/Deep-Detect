@@ -1,415 +1,1182 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DeepDetect — Audio Deepfake Detection</title>
-    <meta name="description" content="AI-powered audio deepfake detection. Upload or record audio to detect AI-generated voices." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'] },
-                    colors: {
-                        brand: { 50:'#f0fdfa', 100:'#ccfbf1', 200:'#99f6e4', 300:'#5eead4', 400:'#2dd4bf', 500:'#14b8a6', 600:'#0d9488', 700:'#0f766e', 800:'#115e59', 900:'#134e4a' },
-                    }
-                }
+        :root {
+            --navy: #2F4156;
+            --slate: #567C8D;
+            --mist: #C8D9E6;
+            --white: #FFFFFF;
+            --cream: #F5EFEB;
+            --navy-dark: #223044;
+            --navy-light: #3d5470;
+            --slate-light: #7a9db0;
+            --mist-dark: #a8c2d4;
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            background: var(--cream);
+            color: var(--navy);
+            font-family: 'DM Sans', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 18px 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(245, 239, 235, 0.88);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(47, 65, 86, 0.1)
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none
+        }
+
+        .nav-logo-mark {
+            width: 36px;
+            height: 36px;
+            background: var(--navy);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .nav-logo-mark svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: var(--mist);
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round
+        }
+
+        .nav-logo-text {
+            font-family: 'DM Serif Display', serif;
+            font-size: 20px;
+            color: var(--navy);
+            letter-spacing: -0.3px
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--slate);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color .2s
+        }
+
+        .nav-links a:hover {
+            color: var(--navy)
+        }
+
+        .nav-cta {
+            background: var(--navy) !important;
+            color: var(--white) !important;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-weight: 600 !important;
+            transition: background .2s !important
+        }
+
+        .nav-cta:hover {
+            background: var(--navy-dark) !important
+        }
+
+        /* HERO */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 120px 48px 80px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0
+        }
+
+        .hero-circle-1 {
+            position: absolute;
+            top: -120px;
+            right: -80px;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(86, 124, 141, 0.18) 0%, transparent 70%)
+        }
+
+        .hero-circle-2 {
+            position: absolute;
+            bottom: -200px;
+            left: -100px;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(47, 65, 86, 0.1) 0%, transparent 70%)
+        }
+
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(47, 65, 86, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(47, 65, 86, 0.04) 1px, transparent 1px);
+            background-size: 48px 48px
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 600px
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(47, 65, 86, 0.08);
+            border: 1px solid rgba(47, 65, 86, 0.15);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--slate);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 28px
+        }
+
+        .hero-badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--slate);
+            animation: blink 2s infinite
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.4
             }
         }
-    </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        .hero h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(48px, 6vw, 88px);
+            line-height: 1.02;
+            color: var(--navy);
+            letter-spacing: -2px;
+            margin-bottom: 24px
+        }
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        .hero h1 em {
+            font-style: italic;
+            color: var(--slate)
+        }
 
-    <style>
-        body { background: #0a0f1a; }
-        .fade-in { animation: fadeIn 0.35s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .pulse-rec { animation: pulseRec 1.4s ease-out infinite; }
-        @keyframes pulseRec { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); } 70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
-        .spin { animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .hero-desc {
+            font-size: 18px;
+            color: var(--slate);
+            max-width: 520px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+            font-weight: 300
+        }
+
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap
+        }
+
+        .btn-primary {
+            background: var(--navy);
+            color: var(--white);
+            padding: 16px 32px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: background .2s, transform .15s;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif
+        }
+
+        .btn-primary:hover {
+            background: var(--navy-dark);
+            transform: translateY(-2px)
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--navy);
+            padding: 16px 32px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border: 1.5px solid rgba(47, 65, 86, 0.25);
+            transition: border-color .2s, background .2s
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--navy);
+            background: rgba(47, 65, 86, 0.05)
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+            margin-top: 64px;
+            padding-top: 48px;
+            border-top: 1px solid rgba(47, 65, 86, 0.12)
+        }
+
+        .hero-stat-num {
+            font-family: 'DM Serif Display', serif;
+            font-size: 38px;
+            color: var(--navy);
+            letter-spacing: -1px
+        }
+
+        .hero-stat-label {
+            font-size: 13px;
+            color: var(--slate);
+            margin-top: 2px;
+            font-weight: 400
+        }
+
+        /* FLOATING CARD */
+        .hero-card {
+            position: absolute;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 340px;
+            background: var(--white);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 32px 72px rgba(47, 65, 86, 0.18), 0 4px 16px rgba(47, 65, 86, 0.08);
+            z-index: 2;
+            border: 1px solid rgba(200, 217, 230, 0.6)
+        }
+
+        .hero-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px
+        }
+
+        .hero-card-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: 0.12em
+        }
+
+        .hero-card-badge {
+            background: rgba(220, 38, 38, 0.1);
+            color: #dc2626;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.05em
+        }
+
+        .wave-visual {
+            height: 64px;
+            background: rgba(200, 217, 230, 0.2);
+            border: 1px solid rgba(200, 217, 230, 0.5);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            gap: 2px;
+            padding: 0 16px
+        }
+
+        .wave-bar {
+            width: 3px;
+            border-radius: 2px;
+            background: var(--slate);
+            animation: wave 1.2s ease-in-out infinite;
+            flex-shrink: 0
+        }
+
+        @keyframes wave {
+
+            0%,
+            100% {
+                height: 6px;
+                opacity: 0.35
+            }
+
+            50% {
+                height: 42px;
+                opacity: 1
+            }
+        }
+
+        .card-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--slate);
+            margin-bottom: 8px
+        }
+
+        .confidence-display {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 20px
+        }
+
+        .confidence-pct {
+            font-family: 'DM Mono', monospace;
+            font-size: 40px;
+            font-weight: 500;
+            color: #dc2626;
+            letter-spacing: -1px;
+            line-height: 1
+        }
+
+        .confidence-tag .verdict-text {
+            font-size: 14px;
+            font-weight: 700;
+            color: #dc2626;
+            text-align: right
+        }
+
+        .confidence-tag .risk-text {
+            font-size: 11px;
+            color: var(--slate);
+            margin-top: 3px;
+            text-align: right;
+            font-family: 'DM Mono', monospace
+        }
+
+        .prob-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px
+        }
+
+        .prob-lbl {
+            font-size: 12px;
+            width: 32px;
+            color: var(--slate);
+            font-weight: 600;
+            font-family: 'DM Mono', monospace
+        }
+
+        .prob-track {
+            flex: 1;
+            height: 8px;
+            background: var(--mist);
+            border-radius: 99px;
+            overflow: hidden
+        }
+
+        .prob-fill {
+            height: 100%;
+            border-radius: 99px
+        }
+
+        .prob-fill.fake {
+            background: #dc2626
+        }
+
+        .prob-fill.real {
+            background: var(--slate)
+        }
+
+        .prob-val {
+            font-size: 12px;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            color: var(--navy);
+            width: 40px;
+            text-align: right
+        }
+
+        .card-divider {
+            margin: 16px 0;
+            border: none;
+            border-top: 1px solid var(--mist)
+        }
+
+        .card-footer-row {
+            font-size: 11px;
+            color: var(--slate);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'DM Mono', monospace
+        }
+
+        /* HOW IT WORKS */
+        #how-it-works {
+            padding: 100px 48px;
+            background: var(--white)
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 72px
+        }
+
+        .section-eyebrow {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--slate);
+            margin-bottom: 12px
+        }
+
+        .section-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(36px, 4vw, 54px);
+            color: var(--navy);
+            letter-spacing: -1px;
+            line-height: 1.1
+        }
+
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--slate);
+            margin-top: 16px;
+            font-weight: 300;
+            max-width: 520px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.7
+        }
+
+        .steps-track {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: 72px 1fr;
+            gap: 0;
+            position: relative
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 35px;
+            top: 72px;
+            height: calc(100% - 48px);
+            width: 2px;
+            background: linear-gradient(to bottom, var(--mist), transparent)
+        }
+
+        .step-num-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 6px
+        }
+
+        .step-num {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--navy);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'DM Serif Display', serif;
+            font-size: 20px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(47, 65, 86, 0.22)
+        }
+
+        .step-body {
+            background: var(--cream);
+            border: 1.5px solid rgba(200, 217, 230, 0.9);
+            border-radius: 20px;
+            padding: 36px 40px;
+            margin-left: 20px;
+            margin-bottom: 20px;
+            transition: box-shadow .3s, transform .3s;
+            position: relative;
+            overflow: hidden
+        }
+
+        .step-body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--navy), var(--slate))
+        }
+
+        .step-body:hover {
+            box-shadow: 0 16px 48px rgba(47, 65, 86, 0.12);
+            transform: translateY(-3px)
+        }
+
+        .step-top-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px
+        }
+
+        .step-icon-box {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            background: var(--white);
+            border: 1.5px solid rgba(200, 217, 230, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0
+        }
+
+        .step-icon-box svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--navy);
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round
+        }
+
+        .step-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--slate)
+        }
+
+        .step-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 23px;
+            color: var(--navy);
+            margin-bottom: 10px;
+            letter-spacing: -0.3px
+        }
+
+        .step-desc {
+            font-size: 15px;
+            color: var(--slate);
+            line-height: 1.75;
+            font-weight: 300
+        }
+
+        .step-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 18px
+        }
+
+        .step-tag {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--navy);
+            background: rgba(200, 217, 230, 0.4);
+            border: 1px solid rgba(200, 217, 230, 0.9);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-family: 'DM Mono', monospace
+        }
+
+        /* FEATURES */
+        #features {
+            padding: 100px 48px;
+            background: var(--navy)
+        }
+
+        #features .section-eyebrow {
+            color: var(--mist-dark)
+        }
+
+        #features .section-title {
+            color: var(--white)
+        }
+
+        #features .section-subtitle {
+            color: rgba(200, 217, 230, 0.65)
+        }
+
+        .features-grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(200, 217, 230, 0.1);
+            border-radius: 20px;
+            padding: 32px;
+            transition: background .3s, border-color .3s, transform .3s;
+            position: relative;
+            overflow: hidden
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(200, 217, 230, 0.22);
+            transform: translateY(-4px)
+        }
+
+        .feature-card-glow {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle at top right, rgba(200, 217, 230, 0.07), transparent 70%);
+            pointer-events: none
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: rgba(200, 217, 230, 0.08);
+            border: 1px solid rgba(200, 217, 230, 0.14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--mist);
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round
+        }
+
+        .feature-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 20px;
+            color: var(--white);
+            margin-bottom: 10px
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: rgba(200, 217, 230, 0.6);
+            line-height: 1.75;
+            font-weight: 300
+        }
+
+        /* CTA */
+        .cta-section {
+            padding: 100px 48px;
+            background: var(--cream);
+            text-align: center
+        }
+
+        .cta-inner {
+            max-width: 600px;
+            margin: 0 auto
+        }
+
+        .cta-inner .section-title {
+            margin-bottom: 16px
+        }
+
+        .cta-inner .section-subtitle {
+            margin-bottom: 40px
+        }
+
+        .cta-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap
+        }
+
+        /* FOOTER */
+        footer {
+            background: var(--navy-dark);
+            padding: 32px 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .footer-logo {
+            font-family: 'DM Serif Display', serif;
+            font-size: 18px;
+            color: var(--mist)
+        }
+
+        .footer-copy {
+            font-size: 12px;
+            color: rgba(200, 217, 230, 0.35);
+            font-family: 'DM Mono', monospace
+        }
+
+        @media(max-width:960px) {
+            .hero-card {
+                display: none
+            }
+
+            nav {
+                padding: 16px 24px
+            }
+
+            .hero {
+                padding: 120px 24px 80px
+            }
+
+            #how-it-works,
+            #features,
+            .cta-section {
+                padding: 72px 24px
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr 1fr
+            }
+        }
+
+        @media(max-width:640px) {
+            .features-grid {
+                grid-template-columns: 1fr
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 20px
+            }
+
+            footer {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center
+            }
+
+            .nav-links a:not(.nav-cta) {
+                display: none
+            }
+        }
+
+        .fade-up {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity .65s ease, transform .65s ease
+        }
+
+        .fade-up.visible {
+            opacity: 1;
+            transform: none
+        }
     </style>
 </head>
-<body class="bg-[#0a0f1a] text-slate-200 min-h-screen font-sans">
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useRef, useEffect, useCallback } = React;
-        const API = "http://localhost:8000";
+<body>
 
-        /* ── WAV encoder (records mic as WAV so librosa can read it) ──── */
-        function encodeWAV(samples, sampleRate) {
-            const buffer = new ArrayBuffer(44 + samples.length * 2);
-            const view = new DataView(buffer);
-            function writeStr(offset, str) { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
-            writeStr(0, 'RIFF');
-            view.setUint32(4, 36 + samples.length * 2, true);
-            writeStr(8, 'WAVE');
-            writeStr(12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, 1, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true);
-            view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true);
-            writeStr(36, 'data');
-            view.setUint32(40, samples.length * 2, true);
-            for (let i = 0; i < samples.length; i++) {
-                const s = Math.max(-1, Math.min(1, samples[i]));
-                view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-            }
-            return new Blob([view], { type: 'audio/wav' });
-        }
+    <nav>
+        <a href="#" class="nav-logo">
+            <div class="nav-logo-mark">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+            </div>
+            <span class="nav-logo-text">DeepDetect</span>
+        </a>
+        <div class="nav-links">
+            <a href="#how-it-works">How It Works</a>
+            <a href="#features">Features</a>
+            <a href="deepdetect-app.html" class="nav-cta">Open DeepDetect</a>
+        </div>
+    </nav>
 
-        /* ── Mic recorder hook (outputs WAV) ────────────────────────── */
-        function useMicRecorder() {
-            const [recording, setRecording] = useState(false);
-            const [audioBlob, setAudioBlob] = useState(null);
-            const [audioUrl, setAudioUrl] = useState(null);
-            const ctxRef = useRef(null);
-            const streamRef = useRef(null);
-            const chunksRef = useRef([]);
-            const procRef = useRef(null);
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-circle-1"></div>
+            <div class="hero-circle-2"></div>
+            <div class="hero-grid"></div>
+        </div>
 
-            const start = useCallback(async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } });
-                    const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                    const source = ctx.createMediaStreamSource(stream);
-                    const proc = ctx.createScriptProcessor(4096, 1, 1);
-                    chunksRef.current = [];
-                    proc.onaudioprocess = (e) => {
-                        const data = e.inputBuffer.getChannelData(0);
-                        chunksRef.current.push(new Float32Array(data));
-                    };
-                    source.connect(proc);
-                    proc.connect(ctx.destination);
-                    ctxRef.current = ctx;
-                    streamRef.current = stream;
-                    procRef.current = proc;
-                    setRecording(true);
-                    setAudioBlob(null);
-                    setAudioUrl(null);
-                } catch (err) {
-                    alert("Mic access denied. Please allow microphone access.");
-                }
-            }, []);
-
-            const stop = useCallback(() => {
-                if (procRef.current) procRef.current.disconnect();
-                if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-                const sr = ctxRef.current ? ctxRef.current.sampleRate : 16000;
-                if (ctxRef.current) ctxRef.current.close();
-
-                let totalLen = 0;
-                chunksRef.current.forEach(c => totalLen += c.length);
-                const merged = new Float32Array(totalLen);
-                let offset = 0;
-                chunksRef.current.forEach(c => { merged.set(c, offset); offset += c.length; });
-
-                const blob = encodeWAV(merged, sr);
-                setAudioBlob(blob);
-                setAudioUrl(URL.createObjectURL(blob));
-                setRecording(false);
-            }, []);
-
-            return { recording, audioBlob, audioUrl, start, stop };
-        }
-
-        /* ── Indicator Bar ──────────────────────────────────────────── */
-        function IndicatorBar({ pct, tag }) {
-            const color = tag === "suspect" ? "bg-red-400" : tag === "normal" ? "bg-teal-400" : "bg-amber-400";
-            return (
-                <div className="flex items-center gap-2.5">
-                    <div className="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden min-w-[120px]">
-                        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-300 w-12 text-right">{pct}%</span>
+        <div class="hero-content">
+            <div class="hero-badge"><span class="hero-badge-dot"></span>Powered by Wav2Vec2</div>
+            <h1>Detect <em>AI&#8209;generated</em><br>voices instantly</h1>
+            <p class="hero-desc">Upload audio or record live. DeepDetect analyzes speech patterns at the signal level to
+                expose synthetic voices with forensic precision.</p>
+            <div class="hero-actions">
+                <a href="deepdetect-app.html" class="btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="23 7 16 12 23 17 23 7" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" />
+                    </svg>
+                    Analyze Audio
+                </a>
+                <a href="#how-it-works" class="btn-secondary">How it works</a>
+            </div>
+            <div class="hero-stats">
+                <div>
+                    <div class="hero-stat-num">82.4%</div>
+                    <div class="hero-stat-label">Detection accuracy</div>
                 </div>
-            );
-        }
-
-        /* ── Evidence Table ─────────────────────────────────────────── */
-        function EvidenceTable({ evidence }) {
-            return (
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-slate-700/60">
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Metric</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Value</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Assessment</th>
-                                <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-400 uppercase tracking-widest min-w-[200px]">Indicator</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {evidence.map((row, i) => (
-                                <tr key={i} className="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors">
-                                    <td className="py-3.5 px-5 text-sm font-semibold text-slate-200">{row.metric}</td>
-                                    <td className="py-3.5 px-5 text-sm text-slate-400 font-mono">{row.value}</td>
-                                    <td className="py-3.5 px-5">
-                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${
-                                            row.tag === "suspect" ? "bg-red-900/40 text-red-400" :
-                                            row.tag === "normal" ? "bg-teal-900/40 text-teal-400" :
-                                            "bg-amber-900/40 text-amber-400"
-                                        }`}>{row.assessment}</span>
-                                    </td>
-                                    <td className="py-3.5 px-5"><IndicatorBar pct={row.pct} tag={row.tag} /></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div>
+                    <div class="hero-stat-num">&lt;2s</div>
+                    <div class="hero-stat-label">Analysis time</div>
                 </div>
-            );
-        }
-
-        /* ── Prob Bar ───────────────────────────────────────────────── */
-        function ProbBar({ label, value, color }) {
-            return (
-                <div className="flex items-center gap-3">
-                    <span className="w-10 text-sm text-slate-400 font-medium">{label}</span>
-                    <div className="flex-1 h-3.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${value * 100}%` }} />
-                    </div>
-                    <span className="w-16 text-right text-sm font-bold text-slate-200">{(value * 100).toFixed(1)}%</span>
+                <div>
+                    <div class="hero-stat-num">5+</div>
+                    <div class="hero-stat-label">Audio formats</div>
                 </div>
-            );
-        }
+            </div>
+        </div>
 
-        /* ── Result Card ────────────────────────────────────────────── */
-        function ResultCard({ data }) {
-            const fake = data.is_fake;
-            const riskColors = {
-                CRITICAL: "bg-red-900/30 text-red-400 border-red-800/60",
-                HIGH: "bg-orange-900/30 text-orange-400 border-orange-800/60",
-                MEDIUM: "bg-amber-900/30 text-amber-400 border-amber-800/60",
-                LOW: "bg-teal-900/30 text-teal-400 border-teal-800/60",
-            };
-            const suspects = data.evidence.filter(e => e.tag === "suspect").map(e => e.metric);
-            const normals = data.evidence.filter(e => e.tag === "normal").map(e => e.metric);
-
-            return (
-                <div className="fade-in space-y-8 mt-6">
-                    {/* Stats */}
-                    <div className="flex gap-3 flex-wrap">
-                        <span className="bg-slate-800/70 border border-slate-700/50 rounded-lg px-4 py-2.5 text-sm text-slate-300"><strong className="text-slate-100">{data.duration}s</strong> duration</span>
-                        <span className="bg-slate-800/70 border border-slate-700/50 rounded-lg px-4 py-2.5 text-sm text-slate-300"><strong className="text-slate-100">16 kHz</strong> sample rate</span>
-                        <span className="bg-slate-800/70 border border-slate-700/50 rounded-lg px-4 py-2.5 text-sm text-slate-300"><strong className="text-slate-100">mono</strong> channel</span>
-                    </div>
-
-                    {/* Graphs */}
-                    <div>
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Signal Analysis</h3>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                            <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4">
-                                <p className="text-sm font-semibold text-slate-300 mb-3">Waveform — Amplitude</p>
-                                <img src={`data:image/png;base64,${data.waveform_img}`} alt="Waveform" className="w-full rounded-xl" />
-                            </div>
-                            <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4">
-                                <p className="text-sm font-semibold text-slate-300 mb-3">Mel Spectrogram — Frequency</p>
-                                <img src={`data:image/png;base64,${data.spectrogram_img}`} alt="Spectrogram" className="w-full rounded-xl" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Verdict */}
-                    <div className={`rounded-2xl p-8 border ${fake ? "bg-red-950/15 border-red-900/30" : "bg-teal-950/15 border-teal-900/30"}`}>
-                        <div className="flex items-center justify-between flex-wrap gap-6">
-                            <div className="flex items-center gap-4">
-                                <span className="text-4xl">{fake ? "🚨" : "✓"}</span>
-                                <div>
-                                    <h2 className={`text-2xl font-bold ${fake ? "text-red-400" : "text-teal-400"}`}>
-                                        {fake ? "AI-Generated Voice Detected" : "Genuine Human Voice"}
-                                    </h2>
-                                    <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border mt-2 inline-block ${riskColors[data.risk]}`}>
-                                        {data.risk} Risk
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className={`text-6xl font-extrabold tracking-tight ${fake ? "text-red-400" : "text-teal-400"}`}>
-                                    {(data.confidence * 100).toFixed(1)}%
-                                </span>
-                                <p className="text-sm text-slate-500 mt-1">{fake ? "Fake" : "Real"} probability</p>
-                            </div>
-                        </div>
-                        <div className="mt-6 space-y-2.5">
-                            <ProbBar label="Real" value={data.prob_real} color="bg-teal-400" />
-                            <ProbBar label="Fake" value={data.prob_fake} color="bg-red-400" />
-                        </div>
-                    </div>
-
-                    {/* Evidence */}
-                    <div className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6">
-                        <h3 className="text-base font-bold text-slate-200 mb-1">What Indicates Deepfake?</h3>
-                        <p className="text-sm text-slate-500 mb-5">Audio metrics analyzed for synthetic speech artifacts</p>
-                        <EvidenceTable evidence={data.evidence} />
-                        {fake && suspects.length > 0 && (
-                            <p className="text-sm text-slate-400 mt-5 leading-relaxed">
-                                <strong className="text-red-400">Key signals: </strong>
-                                {suspects.join(", ")} — patterns typical of AI-synthesized audio.
-                            </p>
-                        )}
-                        {!fake && normals.length > 0 && (
-                            <p className="text-sm text-slate-400 mt-5 leading-relaxed">
-                                <strong className="text-teal-400">Natural signals: </strong>
-                                {normals.join(", ")} — patterns consistent with human speech.
-                            </p>
-                        )}
-                    </div>
+        <!-- FLOATING ANALYSIS CARD -->
+        <div class="hero-card">
+            <div class="hero-card-header">
+                <span class="hero-card-title">Analysis Result</span>
+                <span class="hero-card-badge">AI DETECTED</span>
+            </div>
+            <div class="wave-visual">
+                <div class="wave-bar" style="animation-delay:0s"></div>
+                <div class="wave-bar" style="animation-delay:0.08s"></div>
+                <div class="wave-bar" style="animation-delay:0.16s"></div>
+                <div class="wave-bar" style="animation-delay:0.24s"></div>
+                <div class="wave-bar" style="animation-delay:0.32s"></div>
+                <div class="wave-bar" style="animation-delay:0.4s"></div>
+                <div class="wave-bar" style="animation-delay:0.48s"></div>
+                <div class="wave-bar" style="animation-delay:0.56s"></div>
+                <div class="wave-bar" style="animation-delay:0.64s"></div>
+                <div class="wave-bar" style="animation-delay:0.72s"></div>
+                <div class="wave-bar" style="animation-delay:0.8s"></div>
+                <div class="wave-bar" style="animation-delay:0.88s"></div>
+                <div class="wave-bar" style="animation-delay:0.96s"></div>
+                <div class="wave-bar" style="animation-delay:1.04s"></div>
+                <div class="wave-bar" style="animation-delay:0.04s"></div>
+                <div class="wave-bar" style="animation-delay:0.52s"></div>
+            </div>
+            <div class="card-section-label">Deepfake Confidence</div>
+            <div class="confidence-display">
+                <div class="confidence-pct">89.3%</div>
+                <div class="confidence-tag">
+                    <div class="verdict-text">AI-Generated</div>
+                    <div class="risk-text">CRITICAL Risk</div>
                 </div>
-            );
-        }
-
-        /* ── App ────────────────────────────────────────────────────── */
-        function App() {
-            const [mode, setMode] = useState("upload");
-            const [result, setResult] = useState(null);
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(null);
-            const [fileName, setFileName] = useState("");
-            const fileRef = useRef(null);
-            const mic = useMicRecorder();
-
-            async function analyze(file) {
-                setLoading(true);
-                setError(null);
-                setResult(null);
-                try {
-                    const form = new FormData();
-                    form.append("file", file);
-                    const res = await fetch(`${API}/analyze`, { method: "POST", body: form });
-                    if (!res.ok) throw new Error("Analysis failed");
-                    setResult(await res.json());
-                } catch (err) {
-                    setError(err.message);
-                } finally {
-                    setLoading(false);
-                }
-            }
-
-            function handleFile(e) {
-                const f = e.target.files[0];
-                if (f) { setFileName(f.name); analyze(f); }
-            }
-
-            useEffect(() => {
-                if (mic.audioBlob && !mic.recording) {
-                    analyze(new File([mic.audioBlob], "recording.wav", { type: "audio/wav" }));
-                }
-            }, [mic.audioBlob, mic.recording]);
-
-            return (
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-                    {/* ── Header (centered, prominent) ── */}
-                    <div className="text-center mb-10">
-                        <h1 className="text-5xl font-extrabold text-slate-50 tracking-tight">
-                            <span className="mr-2">🔍</span>DeepDetect
-                        </h1>
-                        <p className="text-base text-slate-500 mt-2">Upload audio or record live to detect AI-generated voices</p>
-                    </div>
-
-                    {/* ── Mode Tabs ── */}
-                    <div className="flex justify-center border-b border-slate-800 mb-8">
-                        <button
-                            onClick={() => { setMode("upload"); setResult(null); setError(null); setFileName(""); }}
-                            className={`px-6 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
-                                mode === "upload" ? "border-teal-500 text-slate-100" : "border-transparent text-slate-500 hover:text-slate-300"
-                            }`}
-                        >📁 Upload File</button>
-                        <button
-                            onClick={() => { setMode("record"); setResult(null); setError(null); }}
-                            className={`px-6 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
-                                mode === "record" ? "border-teal-500 text-slate-100" : "border-transparent text-slate-500 hover:text-slate-300"
-                            }`}
-                        >🎙️ Record Live</button>
-                    </div>
-
-                    {/* ── Upload ── */}
-                    {mode === "upload" && (
-                        <div className="fade-in">
-                            <div
-                                onClick={() => fileRef.current.click()}
-                                className="border-2 border-dashed border-slate-700 hover:border-teal-600 rounded-2xl p-12 text-center cursor-pointer transition-all duration-200"
-                            >
-                                <div className="text-5xl mb-4 opacity-60">📂</div>
-                                <p className="text-lg text-slate-300 font-medium">
-                                    {fileName || "Click to upload audio file"}
-                                </p>
-                                <p className="text-sm text-slate-500 mt-2">WAV, MP3, FLAC, OGG, M4A · Best with 2–13s clips</p>
-                                <input ref={fileRef} type="file" accept=".wav,.mp3,.flac,.ogg,.m4a" onChange={handleFile} className="hidden" />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Record ── */}
-                    {mode === "record" && (
-                        <div className="fade-in text-center py-10">
-                            {!mic.recording ? (
-                                <button
-                                    onClick={mic.start}
-                                    className="w-24 h-24 rounded-full bg-slate-800/80 border-2 border-slate-600 hover:border-red-500 flex items-center justify-center mx-auto transition-all duration-200 hover:scale-105"
-                                    title="Start recording"
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-red-500" />
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={mic.stop}
-                                    className="w-24 h-24 rounded-full bg-red-900/25 border-2 border-red-500 flex items-center justify-center mx-auto pulse-rec transition-all"
-                                    title="Stop recording"
-                                >
-                                    <div className="w-8 h-8 rounded bg-red-500" />
-                                </button>
-                            )}
-                            <p className="text-sm text-slate-400 mt-5">
-                                {mic.recording
-                                    ? <span className="text-red-400 font-medium">● Recording... click to stop</span>
-                                    : "Click to start recording"
-                                }
-                            </p>
-                            {mic.audioUrl && (
-                                <div className="mt-5">
-                                    <audio controls src={mic.audioUrl} className="mx-auto" />
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ── Loading ── */}
-                    {loading && (
-                        <div className="flex items-center justify-center gap-3 py-16 fade-in">
-                            <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full spin" />
-                            <span className="text-sm text-slate-400">Analyzing audio...</span>
-                        </div>
-                    )}
-
-                    {/* ── Error ── */}
-                    {error && (
-                        <div className="bg-red-950/25 border border-red-900/40 rounded-xl p-4 mt-6 text-sm text-red-400 fade-in">
-                            ⚠ {error}
-                        </div>
-                    )}
-
-                    {/* ── Results ── */}
-                    {result && !loading && <ResultCard data={result} />}
-
-                    {/* Footer */}
-                    <p className="text-center text-xs text-slate-700 mt-14">DeepDetect v1.0 — Wav2Vec2 Audio Classification</p>
+            </div>
+            <div class="prob-row">
+                <span class="prob-lbl">Fake</span>
+                <div class="prob-track">
+                    <div class="prob-fill fake" style="width:89%"></div>
                 </div>
-            );
-        }
+                <span class="prob-val">89.3%</span>
+            </div>
+            <div class="prob-row">
+                <span class="prob-lbl">Real</span>
+                <div class="prob-track">
+                    <div class="prob-fill real" style="width:11%"></div>
+                </div>
+                <span class="prob-val">10.7%</span>
+            </div>
+            <hr class="card-divider" />
+            <div class="card-footer-row">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Analyzed in 1.4s &nbsp;·&nbsp; WAV &nbsp;·&nbsp; 16kHz
+            </div>
+        </div>
+    </section>
 
-        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    <!-- HOW IT WORKS -->
+    <section id="how-it-works">
+        <div class="section-header fade-up">
+            <div class="section-eyebrow">Process</div>
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">A forensic pipeline that goes beyond surface-level analysis to expose the
+                artifacts left by AI voice synthesis.</p>
+        </div>
+
+        <div class="steps-track">
+            <div class="step fade-up">
+                <div class="step-num-col">
+                    <div class="step-num">1</div>
+                </div>
+                <div class="step-body">
+                    <div class="step-top-row">
+                        <div class="step-icon-box">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                        </div>
+                        <span class="step-label">Step 01 — Ingestion</span>
+                    </div>
+                    <h3 class="step-title">Upload or Record Audio</h3>
+                    <p class="step-desc">Submit a clip by uploading a file or recording directly in-browser. DeepDetect
+                        accepts all major audio formats and automatically resamples to 16kHz mono — the optimal format
+                        for neural speech analysis. Clips between 2 and 13 seconds yield the highest accuracy.</p>
+                    <div class="step-tags"><span class="step-tag">WAV</span><span class="step-tag">MP3</span><span
+                            class="step-tag">FLAC</span><span class="step-tag">OGG</span><span
+                            class="step-tag">M4A</span><span class="step-tag">16 kHz mono</span></div>
+                </div>
+            </div>
+
+            <div class="step fade-up">
+                <div class="step-num-col">
+                    <div class="step-num">2</div>
+                </div>
+                <div class="step-body">
+                    <div class="step-top-row">
+                        <div class="step-icon-box">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                            </svg>
+                        </div>
+                        <span class="step-label">Step 02 — Signal Analysis</span>
+                    </div>
+                    <h3 class="step-title">Deep Signal Decomposition</h3>
+                    <p class="step-desc">The raw audio is decomposed into amplitude waveforms and Mel spectrograms
+                        simultaneously. This dual representation captures both temporal dynamics and frequency
+                        characteristics — providing the model with a complete acoustic fingerprint of the speech signal.
+                    </p>
+                    <div class="step-tags"><span class="step-tag">Waveform</span><span class="step-tag">Mel
+                            Spectrogram</span><span class="step-tag">MFCC</span><span class="step-tag">Pitch</span><span
+                            class="step-tag">ZCR</span></div>
+                </div>
+            </div>
+
+            <div class="step fade-up">
+                <div class="step-num-col">
+                    <div class="step-num">3</div>
+                </div>
+                <div class="step-body">
+                    <div class="step-top-row">
+                        <div class="step-icon-box">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="2" y="3" width="20" height="14" rx="2" />
+                                <path d="M8 21h8M12 17v4" />
+                            </svg>
+                        </div>
+                        <span class="step-label">Step 03 — Neural Inference</span>
+                    </div>
+                    <h3 class="step-title">Wav2Vec2 Classification</h3>
+                    <p class="step-desc">A fine-tuned Wav2Vec2 transformer processes the acoustic features. Pre-trained
+                        on 960 hours of speech data, it identifies the subtle artifacts left by text-to-speech engines
+                        and voice cloning systems — artifacts that are entirely invisible to the human ear.</p>
+                    <div class="step-tags"><span class="step-tag">Wav2Vec2</span><span
+                            class="step-tag">Transformer</span><span class="step-tag">Self-Supervised</span><span
+                            class="step-tag">LibriSpeech</span></div>
+                </div>
+            </div>
+
+            <div class="step fade-up">
+                <div class="step-num-col">
+                    <div class="step-num">4</div>
+                </div>
+                <div class="step-body">
+                    <div class="step-top-row">
+                        <div class="step-icon-box">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                        </div>
+                        <span class="step-label">Step 04 — Verdict</span>
+                    </div>
+                    <h3 class="step-title">Forensic Evidence Report</h3>
+                    <p class="step-desc">Results are presented with a probability score, risk classification, and a full
+                        evidence table breaking down each acoustic metric analysed. You get a clear Real or Fake verdict
+                        backed by explainable signal-level reasoning — not a black box decision.</p>
+                    <div class="step-tags"><span class="step-tag">Confidence Score</span><span class="step-tag">Risk
+                            Level</span><span class="step-tag">Evidence Table</span><span
+                            class="step-tag">Explainable</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="section-header fade-up">
+            <div class="section-eyebrow">Capabilities</div>
+            <h2 class="section-title">Key Features</h2>
+            <p class="section-subtitle">Built for researchers, journalists, and security professionals who need reliable
+                audio deepfake detection.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card fade-up">
+                <div class="feature-card-glow"></div>
+                <div class="feature-icon"><svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg></div>
+                <h3 class="feature-title">Real-Time Detection</h3>
+                <p class="feature-desc">Record audio live from your microphone and receive a verdict within seconds.
+                    Analysis runs via a local API — no data leaves your machine.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-card-glow"></div>
+                <div class="feature-icon"><svg viewBox="0 0 24 24">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg></div>
+                <h3 class="feature-title">Signal Visualisation</h3>
+                <p class="feature-desc">Every analysis renders an amplitude waveform and Mel spectrogram, letting you
+                    visually inspect the acoustic signature of any submitted audio clip.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-card-glow"></div>
+                <div class="feature-icon"><svg viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg></div>
+                <h3 class="feature-title">Explainable Evidence</h3>
+                <p class="feature-desc">A detailed evidence table surfaces every acoustic metric analysed — pitch,
+                    spectral flatness, zero-crossing rate, and more — each with a per-metric verdict.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-card-glow"></div>
+                <div class="feature-icon"><svg viewBox="0 0 24 24">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg></div>
+                <h3 class="feature-title">Risk Classification</h3>
+                <p class="feature-desc">Each verdict is tagged LOW, MEDIUM, HIGH, or CRITICAL based on confidence
+                    thresholds. Know at a glance exactly how certain the model is.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-card-glow"></div>
+                <div class="feature-icon"><svg viewBox="0 0 24 24">
+                        <rect x="2" y="2" width="20" height="8" rx="2" />
+                        <rect x="2" y="14" width="20" height="8" rx="2" />
+                        <line x1="6" y1="6" x2="6.01" y2="6" />
+                        <line x1="6" y1="18" x2="6.01" y2="18" />
+                    </svg></div>
+                <h3 class="feature-title">Multi-Format Support</h3>
+                <p class="feature-desc">Accepts WAV, MP3, FLAC, OGG, and M4A. Automatic resampling ensures consistent
+                    analysis regardless of the input file's original sample rate.</p>
+            </div>
+            <div class="feature-card fade-up">
+                <div class="feature-card-glow"></div>
+                <div class="feature-icon"><svg viewBox="0 0 24 24">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg></div>
+                <h3 class="feature-title">Wav2Vec2 Backbone</h3>
+                <p class="feature-desc">Built on Meta's Wav2Vec2 — a self-supervised transformer pre-trained on 960
+                    hours of LibriSpeech — fine-tuned specifically for audio deepfake detection.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-inner fade-up">
+            <div class="section-eyebrow">Get Started</div>
+            <h2 class="section-title">Start detecting now</h2>
+            <p class="section-subtitle">No signup required. Run DeepDetect locally and analyse your first audio clip in
+                under a minute.</p>
+            <div class="cta-actions">
+                <a href="deepdetect-app.html" class="btn-primary">Open DeepDetect</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-logo">DeepDetect</div>
+        <div class="footer-copy">v1.0 · Wav2Vec2 Audio Classification · Local inference only</div>
+    </footer>
+
+    <script>
+        const obs = new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
     </script>
 </body>
+
 </html>

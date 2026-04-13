@@ -8,8 +8,10 @@ import librosa
 import torch
 from transformers import AutoModelForAudioClassification, AutoFeatureExtractor
 from fastapi import FastAPI, UploadFile, File
+from fastapi.staticfiles import StaticFiles 
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
 
 # ─── App Setup ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="DeepDetect API")
@@ -208,6 +210,7 @@ async def analyze(file: UploadFile = File(...)):
 def health():
     return {"status": "ok"}
 
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
