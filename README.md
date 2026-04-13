@@ -159,5 +159,3 @@ curl -X POST http://localhost:8000/analyze \
 MIT License — free to use, modify, and distribute.
 
 ---
-
-<p align="center">Built with 🛡️ for researchers, journalists, and security professionals</p
