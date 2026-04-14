@@ -1,4 +1,4 @@
-# Core backend dependencies (relaxed pins for Docker build compatibility)
+# Remaining backend dependencies (torch is installed separately in Dockerfile)
 fastapi
 uvicorn[standard]
 python-multipart
@@ -6,7 +6,6 @@ librosa
 soundfile
 numpy
 matplotlib
-torch --index-url https://download.pytorch.org/whl/cpu
 transformers
 safetensors
 huggingface-hub

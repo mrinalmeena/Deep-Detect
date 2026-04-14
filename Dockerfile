@@ -1,4 +1,4 @@
-# ── DeepDetect – Docker deployment ───────────────────────────────────────────
+# ── DeepDetect – Docker deployment (Railway) ─────────────────────────────────
 FROM python:3.10-slim
 
 # System deps for librosa / soundfile
@@ -6,14 +6,23 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libsndfile1 \
         ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/list/apt/lists/*
 
 WORKDIR /app
 
-# Install Python dependencies (CPU-only torch to keep image small)
-COPY requirements-deploy.txt ./requirements-deploy.txt
+# Install CPU-only PyTorch first (avoids pulling ~5 GB of CUDA libs)
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements-deploy.txt
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining Python dependencies
+COPY requirements-deploy.txt ./requirements-deploy.txt
+RUN pip install --no-cache-dir -r requirements-deploy.txt
+
+# Pre-download the model during build so it's baked into the image
+# This avoids downloading 1.26 GB at every cold start
+RUN python -c "from transformers import AutoModelForAudioClassification, AutoFeatureExtractor; \
+    AutoFeatureExtractor.from_pretrained('garystafford/wav2vec2-deepfake-voice-detector'); \
+    AutoModelForAudioClassification.from_pretrained('garystafford/wav2vec2-deepfake-voice-detector')"
 
 # Copy application code
 COPY backend/ ./backend/

@@ -301,7 +301,9 @@
     </div>
 
     <script>
-        const API = "http://localhost:8000";
+        const API = window.location.hostname === "localhost"
+            ? "http://localhost:8000"
+            : "https://deepdetect-production.up.railway.app";
 
         /* ── WAV encoder ────────────────────────────────────────── */
         function encodeWAV(samples, sr) {
