@@ -1,0 +1,12 @@
+# Core backend dependencies (relaxed pins for Docker build compatibility)
+fastapi
+uvicorn[standard]
+python-multipart
+librosa
+soundfile
+numpy
+matplotlib
+torch --index-url https://download.pytorch.org/whl/cpu
+transformers
+safetensors
+huggingface-hub

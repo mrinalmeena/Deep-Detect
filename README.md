@@ -1,3 +1,12 @@
+---
+title: DeepDetect
+emoji: 🛡️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+---
+
 # 🛡️ DeepDetect — Audio Deepfake Detector
 
 > **Expose AI-generated voices with forensic precision.**  

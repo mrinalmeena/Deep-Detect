@@ -210,7 +210,9 @@ async def analyze(file: UploadFile = File(...)):
 def health():
     return {"status": "ok"}
 
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
+import pathlib
+_FRONTEND_DIR = pathlib.Path(__file__).resolve().parent.parent / "frontend"
+app.mount("/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
