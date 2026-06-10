@@ -3,7 +3,7 @@
 
 services:
   - type: web
-    name: deepdetect
+    name: deep-detect2-0
     runtime: docker
     repo: https://github.com/mrinalmeena/Deep-Detect
     plan: free
