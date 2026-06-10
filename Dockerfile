@@ -32,5 +32,5 @@ COPY frontend/ ./frontend/
 ENV PORT=8000
 EXPOSE $PORT
 
-# Launch the FastAPI server on $PORT
-CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+# Launch the FastAPI server on $PORT with extended timeout for ML inference
+CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT --timeout-keep-alive 120

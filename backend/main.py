@@ -1,4 +1,5 @@
 import io
+import time
 import base64
 import numpy as np
 import matplotlib
@@ -11,6 +12,13 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles 
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+# Optimize CPU inference — limit threads to avoid contention on small instances
+torch.set_num_threads(2)
+torch.set_num_interop_threads(1)
+
+# Max audio length (seconds) — bounds inference time on free tier
+MAX_AUDIO_SEC = 13
 
 
 # ─── App Setup ───────────────────────────────────────────────────────────────────
@@ -35,14 +43,14 @@ print("Model loaded.")
 
 def fig_to_base64(fig) -> str:
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", pad_inches=0.1)
+    fig.savefig(buf, format="png", dpi=80, bbox_inches="tight", pad_inches=0.1)
     plt.close(fig)
     buf.seek(0)
     return base64.b64encode(buf.read()).decode("utf-8")
 
 
 def make_waveform_png(waveform_np: np.ndarray, duration: float) -> str:
-    fig, ax = plt.subplots(figsize=(14, 4))
+    fig, ax = plt.subplots(figsize=(10, 3))
     t = np.linspace(0, duration, len(waveform_np))
     ax.fill_between(t, waveform_np, alpha=0.22, color="#2dd4bf")
     ax.plot(t, waveform_np, color="#2dd4bf", linewidth=0.35)
@@ -58,9 +66,9 @@ def make_waveform_png(waveform_np: np.ndarray, duration: float) -> str:
 
 
 def make_spectrogram_png(waveform_np: np.ndarray, sr: int, duration: float) -> str:
-    mel = librosa.feature.melspectrogram(y=waveform_np, sr=sr, n_mels=80)
+    mel = librosa.feature.melspectrogram(y=waveform_np, sr=sr, n_mels=64)
     mel_db = librosa.power_to_db(mel, ref=np.max)
-    fig, ax = plt.subplots(figsize=(14, 4))
+    fig, ax = plt.subplots(figsize=(10, 3))
     img = ax.imshow(mel_db, aspect="auto", origin="lower", cmap="inferno",
                     extent=[0, duration, 0, 80])
     ax.set_facecolor("#0f172a")
@@ -157,10 +165,17 @@ def build_evidence(metrics: dict) -> list:
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
+    t0 = time.time()
     audio_bytes = await file.read()
     waveform_np, _ = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
 
+    # Cap audio length to bound inference time on free-tier CPU
+    max_samples = int(MAX_AUDIO_SEC * 16000)
+    if len(waveform_np) > max_samples:
+        waveform_np = waveform_np[:max_samples]
+
     duration = round(len(waveform_np) / 16000, 2)
+    print(f"[analyze] audio loaded: {duration}s ({time.time()-t0:.1f}s elapsed)")
 
     # Model inference with temperature scaling to soften extreme confidence
     TEMPERATURE = 2.5
@@ -184,13 +199,17 @@ async def analyze(file: UploadFile = File(...)):
     else:
         risk = "LOW"
 
+    print(f"[analyze] inference done ({time.time()-t0:.1f}s elapsed)")
+
     # Generate images
     waveform_img = make_waveform_png(waveform_np, duration)
     spectrogram_img = make_spectrogram_png(waveform_np, 16000, duration)
+    print(f"[analyze] images done ({time.time()-t0:.1f}s elapsed)")
 
     # Metrics
     metrics = compute_metrics(waveform_np)
     evidence = build_evidence(metrics)
+    print(f"[analyze] complete ({time.time()-t0:.1f}s total)")
 
     return {
         "duration": duration,
@@ -215,4 +234,4 @@ _FRONTEND_DIR = pathlib.Path(__file__).resolve().parent.parent / "frontend"
 app.mount("/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="static")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=120)
