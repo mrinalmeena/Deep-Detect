@@ -1,0 +1,13 @@
+# Render Blueprint – https://render.com/docs/blueprint-spec
+# One-click deploy: https://render.com/deploy?repo=https://github.com/mrinalmeena/Deep-Detect
+
+services:
+  - type: web
+    name: deepdetect
+    runtime: docker
+    repo: https://github.com/mrinalmeena/Deep-Detect
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"

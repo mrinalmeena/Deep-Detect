@@ -1,4 +1,4 @@
-# ── DeepDetect – Docker deployment (Railway) ─────────────────────────────────
+# ── DeepDetect – Docker deployment ────────────────────────────────────────────
 FROM python:3.10-slim
 
 # System deps for librosa / soundfile
@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libsndfile1 \
         ffmpeg \
-    && rm -rf /var/list/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN python -c "from transformers import AutoModelForAudioClassification, AutoFea
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
-# Railway sets PORT env var; default to 8000 for local
+# Render sets PORT env var (default 10000); fallback to 8000 for local
 ENV PORT=8000
 EXPOSE $PORT
 
