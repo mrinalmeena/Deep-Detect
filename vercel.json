@@ -1,0 +1,12 @@
+{
+  "outputDirectory": "frontend",
+  "buildCommand": "",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ]
+}
