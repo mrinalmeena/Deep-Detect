@@ -1,6 +1,4 @@
 {
-  "outputDirectory": "frontend",
-  "buildCommand": "",
   "headers": [
     {
       "source": "/(.*)",
