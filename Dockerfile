@@ -1,4 +1,4 @@
-# ── DeepDetect – Docker deployment ────────────────────────────────────────────
+# ── DeepDetect – Hugging Face Spaces (Docker SDK) ─────────────────────────────
 FROM python:3.10-slim
 
 # System deps for librosa / soundfile
@@ -8,6 +8,8 @@ RUN apt-get update && \
         ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
+# HF Spaces runs as user 1000 — create home dir and app dir with correct perms
+RUN useradd -m -u 1000 user
 WORKDIR /app
 
 # Install CPU-only PyTorch first (avoids pulling ~5 GB of CUDA libs)
@@ -28,9 +30,14 @@ RUN python -c "from transformers import AutoModelForAudioClassification, AutoFea
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
-# Render sets PORT env var (default 10000); fallback to 8000 for local
-ENV PORT=8000
-EXPOSE $PORT
+# Give ownership to the non-root user
+RUN chown -R user:user /app
 
-# Launch the FastAPI server on $PORT with extended timeout for ML inference
-CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT --timeout-keep-alive 120
+USER user
+
+# HF Spaces expects port 7860
+ENV PORT=7860
+EXPOSE 7860
+
+# Launch the FastAPI server
+CMD uvicorn backend.main:app --host 0.0.0.0 --port 7860 --timeout-keep-alive 120

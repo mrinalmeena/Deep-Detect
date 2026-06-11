@@ -304,9 +304,7 @@
     </div>
 
     <script>
-        const API = window.location.hostname === "localhost"
-            ? "http://localhost:8000"
-            : "https://deep-detect2-0.onrender.com";
+        const API = window.location.origin;
 
         /* ── WAV encoder ────────────────────────────────────────── */
         function encodeWAV(samples, sr) {
